@@ -1,0 +1,55 @@
+from ollama import chat
+from ollama import ChatResponse
+import os
+import datetime
+from subprocess import call
+import subprocess
+
+
+
+def AI ():
+  QUERY = "Di che colore è il cielo?"
+  response: ChatResponse = chat( model='llava:7b', 
+                                 messages=[
+  {
+    'role': 'user',
+    'content': QUERY,
+  },
+                            ])
+  R1= response['message']['content']
+  R2 = response.message.content
+  print ("il messaggio è : \n\n" ,response['message']['content'])
+  return R1 #, R2
+
+def main():
+  Language = 'italian' 
+  ora =  datetime.datetime.now()
+  name = 'Paolo'
+  VOCI = { "espeak "  : "X espeak -v italian " , 
+         "espeak-ng"  : 'X espeak-ng "Ciao, come stai oggi?',
+         "festival"   : 'X festival --tts',
+         "pico2wave"  : 'X pico2wave -l=it-IT -w=output.wav "Ciao, questa è una voce locale." && aplay output.wav' ,
+         'RHVoice'    : 'X RHVoice-test -p anna' 
+         }
+
+  print (ora)       
+
+  Comando_0 = "Se stai ascoltando 'Ciao Paolo sto funzionando significa che è una bella giornata! "
+  os.system( Comando_0 + "espeak -v italian")
+
+  RISPOSTA = AI() ###RISPOSTA['message']['content']
+  
+  ''' 
+  #txt = f"La risposta è : {RISPOSTA } \n "
+  #print(txt)
+  #output = subprocess.check_output([ 'RISPOSTA', 'espeak -v italian '], text=True)
+  print (RISPOSTA[:20] + " le ultime parole... \n")
+  call( 'str( RISPOSTA ' , '| espeak -v italian' , shell=True)
+  '''
+  #os.system( str(PARLA ))
+  #os.system('ls')
+
+QUERY = "Why is the sky blue?"
+A= AI()
+print (A)
+main()
