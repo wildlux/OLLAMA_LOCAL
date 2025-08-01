@@ -15,11 +15,12 @@ I want to create a complex app but i try to implement all part in folders
 [ ??? - How it's works the software?  - ???]
 - THe first time you have few option for input data ( text/audio/video/webcam2/USB custom/Cloud )
 
-##################
-# _A_ # _B_ # _C_#
-##################
-#    _INPUT_D_   #
-##################
+|##################|
+| ------ | --- | --- |
+|  _A_ | _B_ | _C_|
+|##################|
+|    _INPUT_D_   |
+|##################|
 
 Naming of layout : 
 - Section 'A' has a  [ Data Generate from _INPUT_] 
