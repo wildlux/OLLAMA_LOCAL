@@ -5,6 +5,7 @@ Implement personal experiment like movie "Minority Report" &/or "Jarvis OS Marve
 - Python [ Portability ]
 - Webcam [ as input ] [ Tracking objects ] [ hand tracking gesture ]
 - Voice recognition [ maybe onother LLM ]
+- pencil detection for draw and writing and scientific use. 
 
 
 movie note 
@@ -16,10 +17,31 @@ movie note
 *** i want to create this software for help Learning disability like dyslexia , arithmetic ,dyscalculia ,dysgraphia. more information  ("https://en.wikipedia.org/wiki/Learning_disability ")
 
 -------------------------------------------------------------------------------------------------------------------------------------------
-I am dyslexis and i want to help other person with this talent because we spoken from visual thinking not word or phrase but visual
+I am dyslexic and i want to help other person with this talent because we spoken easy side visual thinking.
+WE don't use the word or phrase like you but for us word it's a simple sound.
+1) how dyslexic understand the world ?
+   - I listen a source of sound.
+   - If this corrisponding a word i connected with "dictionary italian"
+   - the word or phrase it's connect with something in my database ( record emotion and more)
+   - if true for each signal there is an implement of that data. 
+   - if false it's a simple ambient sound
 For this reason this software it's implement like this for make extremly ridiculus and ovviouse using it !
 -------------------------------------------------------------------------------------------------------------------------------------------
+Why i want to implement this type of software?
+-------------------------------------------------------------------------------------------------------------------------------------------
+- Creating for bioinformatics ( with dyslexia )
+- Artist ( create new artist 2D )
+- Creating document like PDF ready for printing
+- Creating resource for everyone
+- Explain Math
+- Explain Biologic
+- Explain Geography
+- Explain English/Italian/ other language
+- Explain programming [ Assembly, C , C++ , C# , Python , Javascriot , more... ]
+- Creating scheme of software for implement complex algoritm
+- Importing dataset you can mix this information for descover mutation using custom LLM.
 
+-------------------------------------------------------------------------------------------------------------------------------------------
 I want to create a complex Software but i try to implement all part in folders.
 i use the phylosofy of Divide et impera then i will be create in few folders.
 
