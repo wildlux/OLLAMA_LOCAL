@@ -14,5 +14,6 @@ I want to create a complex app but i try to implement all part in folders
 
 [ How it's works the software? ]
 - THe first time you have few option for input data example
---TEXT
+- 
+-- TEXT
   -- in ( Down rectangular - see the layout )
