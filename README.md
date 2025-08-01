@@ -20,9 +20,13 @@ name software it's not accepted because it's very complex software
 -------------------------------------------------------------------------------------------------------------------------------------------
  
 -------------------------------------------------------------------------------------------------------------------------------------------
-I want to create this software for help Learning disability and find Autoimmune disease
-like dyslexia , arithmetic ,dyscalculia ,dysgraphia. 
-more information  "https://en.wikipedia.org/wiki/Learning_disability" 
+I want to create this software for help Learning disability and Autoimmune disease,
+like dyslexia, arithmetic, dyscalculia ,dysgraphia. 
+and tools Medical genetics for understand 
+
+More information :
+- https://en.wikipedia.org/wiki/Learning_disability 
+- https://www.malattierare.gov.it/malattie/ricerca ( typology of different illness )
 -------------------------------------------------------------------------------------------------------------------------------------------
 I am dyslexic and i want to help other person with this talent because we spoken easy side visual thinking.
 WE don't use the word or phrase like you but for us word it's a simple sound.
