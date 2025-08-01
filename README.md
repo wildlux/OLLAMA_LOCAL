@@ -5,7 +5,9 @@ Implement personal experiment like movie "Minority Report" &/or "Jarvis OS Marve
 - Python [ Portability ]
 - Webcam [ as input ] [ Tracking objects ] [ hand tracking gesture ]
 - Voice recognition [ maybe onother LLM ]
-- pencil detection for draw and writing and scientific use. 
+- pencil detection for draw and writing and scientific use.
+- mousepad
+- Graphics tablet [ https://en.wikipedia.org/wiki/Graphics_tablet ]
 
 
 movie note 
@@ -34,12 +36,18 @@ Why i want to implement this type of software?
 - Creating document like PDF ready for printing
 - Creating resource for everyone
 - Explain Math
+- Explainphisics
+- Explain geometry
+- Explain trigonometry
 - Explain Biologic
 - Explain Geography
+- Explain Chemical
+- Explain fluid in a contect of Engineer and industrialist 
 - Explain English/Italian/ other language
 - Explain programming [ Assembly, C , C++ , C# , Python , Javascriot , more... ]
 - Creating scheme of software for implement complex algoritm
 - Importing dataset you can mix this information for descover mutation using custom LLM.
+- Innovate how explain all things with onother vision and new prospective!
 
 -------------------------------------------------------------------------------------------------------------------------------------------
 I want to create a complex Software but i try to implement all part in folders.
