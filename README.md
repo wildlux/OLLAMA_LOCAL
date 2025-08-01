@@ -90,7 +90,7 @@ Repeat till you have all your data.  (text image video etc...)
 
 [ Phase 2 MANAGE YOUR DATA ]
 
-Now you can Drag&Drop your entry in _B_ section. 
+Now you can Drag&Drop your entry data from A -> B section. 
 - Number(s)
   --INT
   --FLOAT
@@ -101,6 +101,6 @@ Now you can Drag&Drop your entry in _B_ section.
 - Video etc... )
 
 [ Details  of your data]
-When Click or Drag&Drop this part it's will be enable open and show some details like
+When Click or Drag&Drop this part it's will be enable section B ==To==> C  and show some details like:
 - Show the Reference location ?  Book  / Video / DATABASE 
 - Show Metadata [ Will help you in LLM ]
