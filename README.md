@@ -16,10 +16,13 @@ movie note
 
 
 -------------------------------------------------------------------------------------------------------------------------------------------
-*** name software it's not accepted because it's very complex software ***
+name software it's not accepted because it's very complex software 
 -------------------------------------------------------------------------------------------------------------------------------------------
-I want to create this software for help Learning disability like dyslexia , arithmetic ,dyscalculia ,dysgraphia. more information  
-( "https://en.wikipedia.org/wiki/Learning_disability" )
+ 
+-------------------------------------------------------------------------------------------------------------------------------------------
+I want to create this software for help Learning disability and find Autoimmune disease
+like dyslexia , arithmetic ,dyscalculia ,dysgraphia. 
+more information  "https://en.wikipedia.org/wiki/Learning_disability" 
 -------------------------------------------------------------------------------------------------------------------------------------------
 I am dyslexic and i want to help other person with this talent because we spoken easy side visual thinking.
 WE don't use the word or phrase like you but for us word it's a simple sound.
@@ -30,12 +33,14 @@ WE don't use the word or phrase like you but for us word it's a simple sound.
    - if true for each signal there is an implement of that data. 
    - if false it's a simple ambient sound
 For this reason this software it's implement like this for make extremly ridiculus and ovviouse using it !
+
 -------------------------------------------------------------------------------------------------------------------------------------------
 Why i want to implement this type of software?
 -------------------------------------------------------------------------------------------------------------------------------------------
 - Creating/help for bioinformatics (
 - Help Research branch Autoimmune_disease for cure (  https://en.wikipedia.org/wiki/Autoimmune_disease )
   - I have also syndrome of Shwachman-Diamond (SDS) https://en.wikipedia.org/wiki/Shwachman%E2%80%93Diamond_syndrome
+  - other other syndrome and any illnes  because i think are all connected!
 - Artist ( create new artist 2D )
 - Creating document like PDF ready for printing
 - Creating resource for everyone
