@@ -13,11 +13,13 @@ Implement personal experiment like movie "Minority Report" &/or "Jarvis OS Marve
 movie note 
 - [ Minority Report ] https://www.youtube.com/watch?v=lG7DGMgfOb8
 - [ Jarvis ] https://www.youtube.com/shorts/MGVQ5WMCjUg
+
+
 -------------------------------------------------------------------------------------------------------------------------------------------
-
-*** name software it's not accepted because it's very complex and for this reason i named this simply "ollama local
-*** i want to create this software for help Learning disability like dyslexia , arithmetic ,dyscalculia ,dysgraphia. more information  ("https://en.wikipedia.org/wiki/Learning_disability ")
-
+*** name software it's not accepted because it's very complex software ***
+-------------------------------------------------------------------------------------------------------------------------------------------
+I want to create this software for help Learning disability like dyslexia , arithmetic ,dyscalculia ,dysgraphia. more information  
+( "https://en.wikipedia.org/wiki/Learning_disability" )
 -------------------------------------------------------------------------------------------------------------------------------------------
 I am dyslexic and i want to help other person with this talent because we spoken easy side visual thinking.
 WE don't use the word or phrase like you but for us word it's a simple sound.
@@ -31,7 +33,9 @@ For this reason this software it's implement like this for make extremly ridicul
 -------------------------------------------------------------------------------------------------------------------------------------------
 Why i want to implement this type of software?
 -------------------------------------------------------------------------------------------------------------------------------------------
-- Creating for bioinformatics ( with dyslexia )
+- Creating/help for bioinformatics (
+- Help Research branch Autoimmune_disease for cure (  https://en.wikipedia.org/wiki/Autoimmune_disease )
+  - I have also syndrome of Shwachman-Diamond (SDS) https://en.wikipedia.org/wiki/Shwachman%E2%80%93Diamond_syndrome
 - Artist ( create new artist 2D )
 - Creating document like PDF ready for printing
 - Creating resource for everyone
@@ -48,10 +52,13 @@ Why i want to implement this type of software?
 - Creating scheme of software for implement complex algoritm
 - Importing dataset you can mix this information for descover mutation using custom LLM.
 - Innovate how explain all things with onother vision and new prospective!
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+All togheter we can make a Good world for new generation!
 
 -------------------------------------------------------------------------------------------------------------------------------------------
 I want to create a complex Software but i try to implement all part in folders.
-i use the phylosofy of Divide et impera then i will be create in few folders.
+I use the phylosofy of Divide et impera then i will be create in few folders.
 
 Note discretion : Below i say 'click' but in my case i refer to use motion hand with my webcam for implement better the software.
 
