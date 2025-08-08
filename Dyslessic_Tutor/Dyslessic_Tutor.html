@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistente per Dislessia - Hand Tracking + AI</title>
+    <script src="https://sdk.withgoogle.com/genai/js/v1/google-genai.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #e74c3c;
+            --tertiary-color: #27ae60;
+            --background-color: #f8f9fa;
+            --panel-background: rgba(255, 255, 255, 0.15);
+            --panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --item-background-text: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --item-background-file: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            --text-color: #2c3e50;
+            --font-family: 'Arial', sans-serif;
+            --hand-left-color: #e74c3c; /* Rosso */
+            --hand-right-color: #2ecc71; /* Verde */
+            --face-color: #f1c40f; /* Giallo */
+            --base-font-size: 16px;
+            
+            /* Colori predefiniti per i pulsanti */
+            --add-text-btn-bg: #3498db;
+            --send-to-ai-btn-bg: #2ecc71;
+            --voice-btn-bg: #e74c3c;
+            --file-label-bg: #9b59b6;
+            --clear-all-btn-bg: #c0392b;
+        }
+
+        body.school-theme {
+            --primary-color: #f39c12;
+            --secondary-color: #3498db;
+            --tertiary-color: #2ecc71;
+            --background-color: #ecf0f1;
+            --panel-background: rgba(255, 255, 255, 0.8);
+            --panel-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --item-background-text: linear-gradient(45deg, #a8ff78 0%, #78ffd6 100%);
+            --item-background-file: linear-gradient(45deg, #ffc3a0 0%, #ff89a0 100%);
+            --text-color: #34495e;
+            --font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+            --hand-left-color: #e74c3c;
+            --hand-right-color: #3498db;
+            --face-color: #9b59b6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-family); font-size: var(--base-font-size); background: var(--background-color); overflow: hidden; position: relative; }
+        #videoBackground { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -2; opacity: 0.4; transform: scaleX(-1); }
+        #handCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; transform: scaleX(-1); }
+        #faceCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 11; pointer-events: none; transform: scaleX(-1); }
+        
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--panel-background);
+            border-radius: 15px;
+            padding: 10px 20px;
+            box-shadow: var(--panel-shadow);
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: var(--text-color);
+            font-size: 28px;
+            font-weight: bold;
+            flex-grow: 1;
+        }
+        .header .project-name-input {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 28px;
+            font-weight: bold;
+            width: 50%;
+            text-align: center;
+        }
+        .header .save-project-btn {
+            background: var(--tertiary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 15px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+            gap: 20px;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .column { background: var(--panel-background); border-radius: 15px; padding: 20px; box-shadow: var(--panel-shadow); backdrop-filter: blur(15px); border: 2px solid rgba(255, 255, 255, 0.1); overflow-y: auto; position: relative; }
+        .column h2 { color: var(--text-color); margin-bottom: 15px; text-align: center; font-size: 24px; font-weight: bold; text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8); }
+        #columnA { border-left: 5px solid var(--primary-color); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+        #columnB { border-left: 5px solid var(--secondary-color); min-height: 400px; background: rgba(231, 76, 60, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #columnC { border-left: 5px solid var(--tertiary-color); }
+        .input-panel { grid-column: 1 / -1; background: var(--panel-background); border-radius: 15px; padding: 20px; box-shadow: var(--panel-shadow); backdrop-filter: blur(15px); border: 2px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 15px; flex-wrap: wrap; position: relative; }
+        .input-panel .buttons-container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        .input-panel.buttons-right .buttons-container { flex-direction: column; }
+        .input-panel.buttons-left .buttons-container { flex-direction: column; order: -1; }
+
+        .text-item, .file-item {
+            background: var(--item-background-text); color: white; padding: 15px 20px; border-radius: 10px; margin: 5px; cursor: grab; font-size: var(--base-font-size); font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); transition: all 0.1s; position: relative; user-select: none; z-index: 5;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding-bottom: 5px;
+        }
+        
+        .text-item .delete-btn, .file-item .delete-btn {
+            position: absolute; top: 5px; right: 5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; line-height: 1; text-align: center; cursor: pointer; font-size: 16px; font-weight: bold; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .file-item { background: var(--item-background-file); }
+        .text-item.full-width, .file-item.full-width { width: 100%; }
+        .text-item.hand-hover, .file-item.hand-hover { border: 3px solid #f39c12; transform: scale(1.05); box-shadow: 0 0 25px rgba(243, 156, 18, 0.6); }
+        .text-item.hand-selected, .file-item.hand-selected { background: linear-gradient(135deg, #e74c3c, #c0392b) !important; transform: scale(1.15); z-index: 1000; box-shadow: 0 10px 30px rgba(231, 76, 60, 0.8); position: fixed !important; cursor: grabbing; }
+
+        .item-text-content {
+            flex-grow: 1;
+            padding-right: 35px;
+            padding-top: 15px; /* Spostato più in basso */
+        }
+        .item-buttons-container {
+            display: flex;
+            gap: 5px;
+            align-self: flex-end;
+            padding-bottom: 5px;
+        }
+        .text-item .listen-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            border-radius: 8px; /* Bordi arrotondati */
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .drop-zone { flex-grow: 1; border: 3px dashed rgba(52, 152, 219, 0.5); border-radius: 10px; padding: 20px; text-align: center; color: #7f8c8d; margin: 10px 0; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 250px; }
+        .drop-zone.drag-over { border-color: rgba(231, 76, 60, 0.8); background: rgba(231, 76, 60, 0.1); color: #e74c3c; transform: scale(1.02); }
+        .status-indicator { position: fixed; top: 10px; right: 20px; padding: 10px 15px; background: rgba(0, 0, 0, 0.5); color: white; border-radius: 8px; z-index: 10000; font-size: 14px; backdrop-filter: blur(10px); }
+        
+        .indicator { position: fixed; width: 30px; height: 30px; border-radius: 50%; pointer-events: none; z-index: 999; mix-blend-mode: normal; }
+        #leftHandIndicator { border: 3px solid var(--hand-left-color); background: rgba(52, 152, 219, 0.3); }
+        #rightHandIndicator { border: 3px solid var(--hand-right-color); background: rgba(46, 204, 113, 0.3); }
+        #mouseIndicator { border: 3px solid #9b59b6; background: rgba(155, 89, 182, 0.3); width: 20px; height: 20px; }
+        #faceIndicator { border: 3px solid var(--face-color); background: rgba(241, 196, 15, 0.3); width: 60px; height: 60px; }
+        .indicator.closed { transform: scale(1.3); box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
+        #leftHandIndicator.closed, #rightHandIndicator.closed { background: rgba(231, 76, 60, 0.8); border-color: #e74c3c; }
+
+        .ai-toggle { background: rgba(52, 152, 219, 0.2); border: 2px solid rgba(52, 152, 219, 0.3); color: white; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px; margin: 2px; min-width: auto; position: relative; }
+        .ai-toggle.active { background: rgba(39, 174, 96, 0.3); border-color: rgba(39, 174, 96, 0.5); }
+        .ai-status-icon { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); }
+        .status-icon.green { color: #2ecc71; }
+        .status-icon.blue { color: #3498db; }
+        .status-icon.red { color: #e74c3c; }
+        
+        .input-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
+        input, button, select { padding: 12px 15px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; font-size: var(--base-font-size); font-family: inherit; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); color: var(--text-color); }
+        
+        /* Stili per i pulsanti grandi */
+        .input-panel button, .input-panel .file-label {
+            min-width: 150px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 5px;
+            font-weight: bold;
+            font-size: var(--base-font-size);
+            padding: 10px;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #addTextBtn { background-color: var(--add-text-btn-bg); }
+        #sendToAI { background-color: var(--send-to-ai-btn-bg); }
+        #voiceBtn { background-color: var(--voice-btn-bg); }
+        #fileLabel { background-color: var(--file-label-bg); }
+        #clearAllBtn { background-color: var(--clear-all-btn-bg); }
+        
+        #textInput { flex-grow: 1; min-height: 80px; font-size: calc(var(--base-font-size) * 1.5); }
+
+        .tooltip { position: absolute; background: rgba(0, 0, 0, 0.8); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; top: -35px; left: 50%; transform: translateX(-50%); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 1000; }
+        button:hover .tooltip { opacity: 1; }
+        .voice-btn.recording::before {
+            content: '🔴';
+            position: absolute;
+            left: 10px; top: 50%; transform: translateY(-50%);
+            animation: pulse-record 1s infinite;
+        }
+        @keyframes pulse-record {
+            0% { transform: translateY(-50%) scale(1); }
+            50% { transform: translateY(-50%) scale(1.2); }
+            100% { transform: translateY(-50%) scale(1); }
+        }
+        .ai-disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .file-icon, .btn-icon {
+            font-size: calc(var(--base-font-size) * 5);
+        }
+        
+        .language-indicator { position: absolute; bottom: -25px; left: 0; font-size: 12px; color: rgba(44, 62, 80, 0.7); background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 4px; backdrop-filter: blur(5px); }
+        .text-item { cursor: grab; }
+        .text-item.hand-selected { cursor: grabbing; }
+        .text-content-wrapper { display: flex; flex-direction: column; width: 100%; gap: 5px; }
+        .text-content-item { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .text-content-item span { flex-grow: 1; margin-right: 10px; }
+        .listen-btn { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; transition: background 0.2s ease; }
+        .listen-btn:hover { background: rgba(255, 255, 255, 0.4); }
+
+        .placement-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        .placement-grid.show { display: grid; }
+        .drop-zone-cell {
+            border: 2px dashed #95a5a6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #7f8c8d;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .drop-zone-cell.drag-over {
+            background: rgba(241, 196, 15, 0.2);
+            border-color: #f1c40f;
+        }
+        .drop-zone-cell .text-item, .drop-zone-cell .file-item {
+            margin: 0;
+        }
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5);
+            display: none; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto; /* Aggiunto ascensore */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { color: var(--text-color); }
+        .close-btn { font-size: 30px; font-weight: bold; cursor: pointer; color: #7f8c8d; }
+        .modal-tabs { display: flex; border-bottom: 2px solid #ecf0f1; margin-bottom: 20px; }
+        .modal-tab { padding: 10px 20px; cursor: pointer; font-weight: bold; color: #7f8c8d; border-bottom: 2px solid transparent; transition: all 0.3s ease; }
+        .modal-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .modal-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .modal-section h4 { color: #34495e; margin-bottom: 10px; }
+        #ollama-status, #ollama-models { margin-top: 10px; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; max-height: 100px; overflow-y: auto; background: #ecf0f1; padding: 10px; border-radius: 5px; position: relative; }
+        .copy-error-btn { position: absolute; top: 5px; right: 5px; font-size: 12px; padding: 5px; }
+
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; grid-template-rows: auto; }
+            .input-panel { grid-column: auto; }
+            .column { min-height: 200px; }
+        }
+
+        .text-item-group { display: flex; flex-direction: column; gap: 5px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+        .text-item-group-handle { cursor: grab; background: #3498db; color: white; padding: 5px; border-radius: 5px; text-align: center; margin-bottom: 5px; }
+
+        .modal-footer-suggestions {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        /* Nuovi stili per i pulsanti del pannello di input in modalità "Solo Icona" */
+        .input-panel.icon-only-mode button, .input-panel.icon-only-mode .file-label {
+            width: 300px;
+            height: 300px;
+            font-size: calc(var(--base-font-size) * 15); /* Aumenta la dimensione del font per l'icona */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            text-align: center;
+            line-height: 1;
+        }
+        .input-panel.icon-only-mode button span {
+            display: none;
+        }
+        .input-panel.icon-only-mode .file-label span {
+            display: block;
+        }
+        
+        #ollamaPermissionModal h3 { text-align: center; color: #34495e; }
+        #ollamaPermissionModal p { text-align: justify; margin: 15px 0; }
+        #ollamaPermissionModal button { width: 48%; }
+        #ollamaPermissionModal button.decline { background-color: #e74c3c; color: white; }
+        #ollamaPermissionModal button.accept { background-color: #2ecc71; color: white; }
+    </style>
+    <audio id="selectSound" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" preload="auto"></audio>
+    <audio id="releaseSound" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" preload="auto"></audio>
+    <audio id="errorSound" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" preload="auto"></audio>
+
+</head>
+<body class="dark-theme">
+    <video id="videoBackground" autoplay muted playsinline></video>
+    <canvas id="handCanvas" class="hand-canvas"></canvas>
+    <canvas id="faceCanvas" class="face-canvas"></canvas>
+
+    <div class="indicator" id="mouseIndicator" style="display: none;"></div>
+    <div class="indicator" id="leftHandIndicator" style="display: none;"></div>
+    <div class="indicator" id="rightHandIndicator" style="display: none;"></div>
+    <div class="indicator" id="faceIndicator" style="display: none;"></div>
+
+    <div class="status-indicator" id="statusIndicator">Inizializzando...</div>
+
+    <button style="position: fixed; top: 10px; left: 20px; z-index: 10000; min-width: auto; background-color: rgba(0, 0, 0, 0.5); color: white; border: none;" onclick="openConfigMenu()">⚙️ Opzioni</button>
+
+    <div class="modal" id="configModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Menu di Configurazione</h3>
+                <span class="close-btn" onclick="closeConfigMenu()">❌</span>
+            </div>
+            <div class="modal-tabs">
+                <div class="modal-tab active" data-tab="ai-config">Configurazione AI</div>
+                <div class="modal-tab" data-tab="behavior-ui">Comportamento & UI</div>
+                <div class="modal-tab" data-tab="gestures-sounds">Gesti & Suoni</div>
+            </div>
+            <div id="ai-config" class="tab-content active">
+                <div class="modal-section">
+                    <h4>AI Assistant</h4>
+                    <p>Scegli l'AI che vuoi usare:</p>
+                    <button class="ai-toggle" id="ollamaToggle">Ollama <span class="ai-status-icon" id="ollamaStatus"></span></button>
+                    <button class="ai-toggle" id="geminiToggle">Gemini <span class="ai-status-icon" id="geminiStatus"></span></button>
+                    <button class="ai-toggle" id="claudeToggle">Claude <span class="ai-status-icon" id="claudeStatus"></span></button>
+                    <div id="ollamaSettings" style="display: none; margin-top: 10px; color: white;">
+                        <label for="ollamaModelName">Modello:</label>
+                        <input type="text" id="ollamaModelName" value="gemma:2b" placeholder="Inserisci il nome del modello Ollama">
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <h4>Log Risposte AI</h4>
+                    <div id="aiResponse" style="color: black; font-size: 12px; margin-top: 10px; max-height: 100px; overflow-y: auto; background-color: #f0f0f0; padding: 10px; border-radius: 5px;">Nessuna risposta.</div>
+                </div>
+                <div class="modal-section">
+                    <h4>Trigger per AI</h4>
+                    <p>Imposta una parola d'ordine per inviare il testo all'AI:</p>
+                    <input type="text" id="aiTriggerWord" value="++++" placeholder="es. ++++">
+                </div>
+                <div class="modal-section">
+                    <h4>Ollama Status</h4>
+                    <button onclick="testOllamaConnection()">Testa Connessione & Modelli</button>
+                    <div id="ollama-status">Stato: Inattivo <button class="copy-error-btn" onclick="copyError('ollama-status')">📋 Copia errore</button></div>
+                    <div id="ollama-models">Modelli disponibili: Nessuno</div>
+                </div>
+            </div>
+            <div id="behavior-ui" class="tab-content">
+                <div class="modal-section">
+                    <h4>Tema & Colori Cursore</h4>
+                    <p>Scegli il tema dell'interfaccia:</p>
+                    <button onclick="setTheme('dark-theme')">Tema Attuale</button>
+                    <button onclick="setTheme('school-theme')">Tema Scuola</button>
+                    <div style="margin-top: 15px;">
+                        Colore mano sinistra: <input type="color" id="handLeftColor" value="#e74c3c">
+                        Colore mano destra: <input type="color" id="handRightColor" value="#2ecc71">
+                        Colore viso: <input type="color" id="faceColor" value="#f1c40f">
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <h4>Layout Elementi</h4>
+                    <p>Dimensioni degli elementi contenuti:</p>
+                    <select id="contentItemSize">
+                        <option value="auto">Adatta al testo</option>
+                        <option value="full">Larghezza completa</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <h4>Visualizzazione Elementi</h4>
+                    <p>Scegli come visualizzare testo e icone:</p>
+                    <select id="itemDisplayMode">
+                        <option value="text-icon">Testo con Icona</option>
+                        <option value="text-only">Solo Testo</option>
+                        <option value="icon-only">Solo Icona</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <h4>Posizione Icone</h4>
+                    <p>Scegli la posizione delle icone negli elementi:</p>
+                    <select id="iconPosition">
+                        <option value="top">In alto</option>
+                        <option value="right">A destra</option>
+                        <option value="bottom">In basso</option>
+                        <option value="left">A sinistra</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <h4>Colori Pulsanti</h4>
+                    <p>Scegli i colori per i pulsanti di input:</p>
+                    <label>Aggiungi Testo: <input type="color" id="addTextBtnColor" value="#3498db"></label><br>
+                    <label>Invia ad AI: <input type="color" id="sendToAIColor" value="#2ecc71"></label><br>
+                    <label>Registra Voce: <input type="color" id="voiceBtnColor" value="#e74c3c"></label><br>
+                    <label>Carica File: <input type="color" id="fileLabelColor" value="#9b59b6"></label><br>
+                    <label>Pulisci Tutto: <input type="color" id="clearAllBtnColor" value="#c0392b"></label>
+                </div>
+                <div class="modal-section">
+                    <h4>Posizione Pulsanti</h4>
+                    <p>Scegli la posizione dei pulsanti di input:</p>
+                    <select id="buttonsPosition">
+                        <option value="bottom">Sotto l'input</option>
+                        <option value="top">Sopra l'input</option>
+                        <option value="right">A destra dell'input</option>
+                        <option value="left">A sinistra dell'input</option>
+                    </select>
+                </div>
+            </div>
+            <div id="gestures-sounds" class="tab-content">
+                <div class="modal-section">
+                    <h4>Riconoscimento Vocale</h4>
+                    <p>Seleziona la lingua per il microfono:</p>
+                    <select id="voiceLanguageOption">
+                        <option value="it-IT">Italiano</option>
+                        <option value="en-US">English</option>
+                        <option value="de-DE">Deutsch</option>
+                        <option value="es-ES">Español</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <h4>Riconoscimento Facciale</h4>
+                    <p>Attiva la funzione d'emergenza "genitore empatico":</p>
+                    <input type="checkbox" id="faceRecognitionEnabled"> Abilita
+                </div>
+                <div class="modal-section">
+                    <h4>Dispositivo Esterno</h4>
+                    <p>Collega Arduino o altri dispositivi via USB.</p>
+                    <button onclick="connectArduino()">🖲️ Collega Dispositivo Esterno</button>
+                </div>
+                <div class="modal-section">
+                    <h4>Feedback Sonoro</h4>
+                    <p>Attiva/disattiva i suoni per i gesti:</p>
+                    <input type="checkbox" id="soundEnabled" checked> Abilita Suoni
+                    <p>Volume: <input type="range" id="soundVolume" min="0" max="1" step="0.1" value="0.5"></p>
+                </div>
+                <div class="modal-section">
+                    <h4>Gesti Mano</h4>
+                    <p>Timeout per la selezione (in ms):</p>
+                    <input type="number" id="gestureTimeout" value="500" min="100" max="2000">
+                </div>
+            </div>
+            <div class="modal-footer-suggestions">
+                <button onclick="applyConfigChanges()">✅ Applica Modifiche</button>
+                <button onclick="saveConfigToFile()">💾 Salva Configurazione</button>
+                <button onclick="downloadEmotionLog()">Scarica Log Emozioni</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="ollamaPermissionModal">
+        <div class="modal-content">
+            <h3>Richiesta di Permesso</h3>
+            <p>Per utilizzare Ollama, questo programma deve connettersi a un server in esecuzione sul tuo computer (localhost). Questo è un processo sicuro e non invia dati esterni. Vuoi procedere con la connessione?</p>
+            <div style="display: flex; justify-content: space-between;">
+                <button class="decline" onclick="declineOllamaPermission()">❌ No, grazie</button>
+                <button class="accept" onclick="acceptOllamaPermission()">✅ Sì, connetti</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <input type="text" class="project-name-input" placeholder="Inserisci il nome del progetto">
+            <button class="save-project-btn" onclick="saveWorkspace()">💾 Salva Area di Lavoro</button>
+        </div>
+        <div class="column" id="columnA"><h2>📝 Contenuti pensieri creativi (A)</h2></div>
+        <div class="column" id="columnB">
+            <h2>🎯 Area di Lavoro (B)</h2>
+            <div class="drop-zone" id="workArea">
+                <p>Trascina gli elementi qui</p>
+                <div class="placement-grid" id="placementGrid">
+                    <div class="drop-zone-cell" data-cell-index="0"></div>
+                    <div class="drop-zone-cell" data-cell-index="1"></div>
+                    <div class="drop-zone-cell" data-cell-index="2"></div>
+                </div>
+            </div>
+        </div>
+        <div class="column" id="columnC">
+            <h2>📋 Dettagli (C)</h2>
+            <div id="details">Seleziona un elemento per vedere i dettagli</div>
+        </div>
+        <div class="input-panel">
+            <div class="input-group">
+                <div class="text-input-container" style="width: 100%;">
+                    <input type="text" id="textInput" placeholder="Inserisci qui il testo..." style="width: 100%;">
+                    <div class="language-indicator">🇮🇹 Italiano</div>
+                </div>
+            </div>
+            <div class="buttons-container" id="inputButtonsContainer">
+                <button id="addTextBtn">
+                    <span class="btn-icon">➕</span>
+                    <span>Aggiungi Testo</span>
+                </button>
+                <button id="sendToAI" class="ai-disabled">
+                    <span class="btn-icon">🤖</span>
+                    <span>Invia ad AI</span>
+                    <div class="tooltip">Seleziona prima un AI (Ollama/Gemini/Claude)</div>
+                </button>
+                <button id="voiceBtn">
+                    <span class="btn-icon">🎤</span>
+                    <span>Registra Voce</span>
+                </button>
+                <label for="fileInput" class="file-label" id="fileLabel">
+                    <span class="btn-icon">📁</span>
+                    <span>Carica File</span>
+                </label>
+                <input type="file" id="fileInput" accept=".txt,.pdf,.docx,image/*,audio/*,video/*" multiple>
+                <button id="clearAllBtn">
+                    <span class="btn-icon">🗑️</span>
+                    <span>Pulisci Tutto</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GEMINI_API_KEY = "INCOLLA_LA_TUA_CHIAVE_API_QUI";
+        
+        const videoElement = document.getElementById('videoBackground');
+        const handCanvas = document.getElementById('handCanvas');
+        const handCanvasCtx = handCanvas.getContext('2d');
+        const faceCanvas = document.getElementById('faceCanvas');
+        const faceCanvasCtx = faceCanvas.getContext('2d');
+        const mouseIndicator = document.getElementById('mouseIndicator');
+        const leftHandIndicator = document.getElementById('leftHandIndicator');
+        const rightHandIndicator = document.getElementById('rightHandIndicator');
+        const faceIndicator = document.getElementById('faceIndicator');
+
+        const selectSound = document.getElementById('selectSound');
+        const releaseSound = document.getElementById('releaseSound');
+        
+        let activeAI = null;
+        let hoveredElement = null;
+        let selectedElement = null;
+        let isDragging = false;
+        let draggingHand = null;
+        let draggingGroup = null;
+
+        let mouseDragging = false;
+        let mouseDragOffset = { x: 0, y: 0 };
+        
+        let isVoiceRecording = false;
+        let recognition;
+        
+        const ollamaStatusIcon = document.getElementById('ollamaStatus');
+        const geminiStatusIcon = document.getElementById('geminiStatus');
+        const claudeStatusIcon = document.getElementById('claudeStatus');
+        
+        const textInput = document.getElementById('textInput');
+        
+        let grabTimer = null;
+        let isGrabbing = false;
+        
+        let emotionLog = [];
+        let lastErrorText = '';
+        
+        // --- Hand & Face Tracking ---
+        function onHandResults(results) {
+            handCanvasCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+            leftHandIndicator.style.display = 'none';
+            rightHandIndicator.style.display = 'none';
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                    const landmarks = results.multiHandLandmarks[i];
+                    const handedness = results.multiHandedness[i].label;
+                    const currentIndicator = (handedness === 'Left') ? leftHandIndicator : rightHandIndicator;
+
+                    drawConnectors(handCanvasCtx, landmarks, HAND_CONNECTIONS, { color: handedness === 'Left' ? 'var(--hand-left-color)' : 'var(--hand-right-color)', lineWidth: 2 });
+                    drawLandmarks(handCanvasCtx, landmarks, { color: '#FFFFFF', lineWidth: 1, radius: 3 });
+
+                    const indexFingerTip = landmarks[8];
+                    const thumbTip = landmarks[4];
+                    const screenX = (1.0 - indexFingerTip.x) * window.innerWidth;
+                    const screenY = indexFingerTip.y * window.innerHeight;
+
+                    const distance = Math.hypot((indexFingerTip.x - thumbTip.x), (indexFingerTip.y - thumbTip.y));
+                    const isPinching = distance < 0.05;
+
+                    updateIndicator(currentIndicator, screenX, screenY, isPinching);
+
+                    if (!isDragging && !isGrabbing) {
+                        handleHover(screenX, screenY);
+                        if (isPinching) {
+                            if (!grabTimer) {
+                                grabTimer = setTimeout(() => {
+                                    handleGrab(handedness, screenX, screenY);
+                                    isGrabbing = true;
+                                    grabTimer = null;
+                                }, parseInt(document.getElementById('gestureTimeout').value));
+                            }
+                        } else {
+                            clearTimeout(grabTimer);
+                            grabTimer = null;
+                        }
+                    } else if (isDragging && draggingHand === handedness) {
+                        handleDrag(screenX, screenY);
+                        if (!isPinching) {
+                            handleRelease(screenX, screenY);
+                            isGrabbing = false;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function onFaceResults(results) {
+            faceCanvasCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+            faceIndicator.style.display = 'none';
+            
+            if (document.getElementById('faceRecognitionEnabled').checked && results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const face = results.multiFaceLandmarks[0];
+                const noseTip = face[1];
+                const screenX = (1.0 - noseTip.x) * window.innerWidth;
+                const screenY = noseTip.y * window.innerHeight;
+                
+                const mouthLeft = face[61];
+                const mouthRight = face[291];
+                const mouthBottom = face[18];
+                
+                const mouthDistHorizontal = Math.hypot(mouthLeft.x - mouthRight.x, mouthLeft.y - mouthRight.y);
+                const mouthDistVertical = Math.hypot(face[13].x - mouthBottom.x, face[13].y - mouthBottom.y);
+                
+                const smileRatio = mouthDistHorizontal / mouthDistVertical;
+                const isSmiling = smileRatio > 2; // Valore di soglia per il sorriso
+                const isSad = mouthBottom.y > face[13].y + 0.02; // Bocca in giù
+
+                updateIndicator(faceIndicator, screenX, screenY);
+                if (isSmiling) {
+                    faceIndicator.style.borderColor = 'lime';
+                    updateStatus('Espressione: Sorriso 🙂');
+                } else if (isSad) {
+                    faceIndicator.style.borderColor = '#e74c3c';
+                    updateStatus('Espressione: Triste 😥 - Attivazione funzione emergenza parenti');
+                    activateParentEmergencyFunction();
+                } else {
+                    faceIndicator.style.borderColor = 'var(--face-color)';
+                    updateStatus('Espressione: Neutra');
+                }
+
+                drawConnectors(faceCanvasCtx, face, FACEMESH_TESSELATION, {color: '#C0C0C070', lineWidth: 1});
+                drawConnectors(faceCanvasCtx, face, FACEMESH_CONTOURS, {color: '#FFFFFF', lineWidth: 1});
+            }
+        }
+        
+        function activateParentEmergencyFunction() {
+            // Qui viene attivata la "funzione d'emergenza parenti"
+            // Genera un messaggio empatico
+            const message = `Ehi, non preoccuparti per l'errore. Fa parte del gioco e serve per imparare! Sono qui con te, come se fossi il tuo figlio/figlia. Ogni sbaglio ci avvicina alla soluzione. Riprova con calma, senza fretta ❤️`;
+            
+            // Logga l'evento in un array
+            emotionLog.push({
+                timestamp: new Date().toISOString(),
+                emotion: 'Sad',
+                message: 'Utente ha mostrato un\'espressione triste.',
+                empathyResponse: message
+            });
+
+            // Mostra il messaggio empatico all'utente
+            document.getElementById('aiResponse').innerHTML = `<strong>Funzione Genitore Empatico:</strong> ${message}`;
+            updateAIStatus(activeAI, 'fail'); // Simula un errore ma con risposta empatica
+        }
+
+        function downloadEmotionLog() {
+            const logText = emotionLog.map(entry => 
+                `[${entry.timestamp}] Emozione: ${entry.emotion}\nMessaggio: ${entry.message}\nRisposta: ${entry.empathyResponse}\n`
+            ).join('\n\n');
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `log_emozioni_${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            updateStatus('Log delle emozioni scaricato.');
+        }
+
+        // --- Drag and Drop Logic ---
+        function playSound(type) {
+            if (document.getElementById('soundEnabled').checked) {
+                const sound = type === 'select' ? selectSound : releaseSound;
+                sound.volume = document.getElementById('soundVolume').value;
+                sound.currentTime = 0;
+                sound.play().catch(e => console.error("Errore nella riproduzione audio:", e));
+            }
+        }
+
+        function handleHover(x, y) {
+            const element = getElementAtPosition(x, y);
+            if (hoveredElement) hoveredElement.classList.remove('hand-hover');
+            hoveredElement = null;
+            if (element && !isDragging) {
+                element.classList.add('hand-hover');
+                hoveredElement = element;
+                if (element.classList.contains('text-item')) {
+                    showDetails(element.querySelector('.item-text-content').textContent);
+                } else if (element.classList.contains('file-item')) {
+                    showFileDetails({
+                        name: element.dataset.filename,
+                        type: element.dataset.filetype,
+                        size: element.dataset.filesize,
+                        lastModified: element.dataset.filemodified
+                    });
+                }
+            }
+        }
+
+        function handleGrab(hand, x, y) {
+            if (hoveredElement && !isDragging) {
+                isDragging = true;
+                draggingHand = hand;
+                selectedElement = hoveredElement;
+                selectedElement.classList.remove('hand-hover');
+                selectedElement.classList.add('hand-selected');
+                playSound('select');
+                
+                if (selectedElement.classList.contains('text-item-group')) {
+                    draggingGroup = document.querySelectorAll(`[data-group-id="${selectedElement.dataset.groupId}"]`);
+                    draggingGroup.forEach(el => {
+                        if (el !== selectedElement) {
+                            el.classList.add('hand-selected');
+                            el.style.position = 'fixed';
+                        }
+                    });
+                }
+
+                selectedElement.style.position = 'fixed';
+                selectedElement.style.left = (x - selectedElement.offsetWidth / 2) + 'px';
+                selectedElement.style.top = (y - selectedElement.offsetHeight / 2) + 'px';
+                
+                hoveredElement = null;
+                updateStatus(`Elemento selezionato: "${selectedElement.querySelector('span').textContent || selectedElement.dataset.filename}"`);
+            }
+        }
+
+        function handleDrag(x, y) {
+            if (selectedElement) {
+                const dx = x - selectedElement.offsetWidth / 2;
+                const dy = y - selectedElement.offsetHeight / 2;
+                selectedElement.style.left = dx + 'px';
+                selectedElement.style.top = dy + 'px';
+                
+                if (draggingGroup) {
+                    const parentRect = selectedElement.getBoundingClientRect();
+                    draggingGroup.forEach(el => {
+                        const originalRect = el.getBoundingClientRect();
+                        el.style.left = (parentRect.left + (originalRect.left - parentRect.left)) + 'px';
+                        el.style.top = (parentRect.top + (originalRect.top - parentRect.top)) + 'px';
+                    });
+                }
+
+                const workArea = document.getElementById('workArea');
+                const placementGrid = document.getElementById('placementGrid');
+                const rect = workArea.getBoundingClientRect();
+                if (x > rect.left && x < rect.right && y > rect.top && y < rect.bottom) {
+                    workArea.classList.add('drag-over');
+                    placementGrid.classList.add('show');
+                    const cell = getElementAtPosition(x, y, '.drop-zone-cell');
+                    const cells = document.querySelectorAll('.drop-zone-cell');
+                    cells.forEach(c => c.classList.remove('drag-over'));
+                    if (cell) {
+                        cell.classList.add('drag-over');
+                    }
+                } else {
+                    workArea.classList.remove('drag-over');
+                    placementGrid.classList.remove('show');
+                }
+            }
+        }
+
+        function handleRelease(x, y) {
+            if (selectedElement) {
+                const workArea = document.getElementById('workArea');
+                const rect = workArea.getBoundingClientRect();
+                if (x > rect.left && x < rect.right && y > rect.top && y < rect.bottom) {
+                    const dropCell = getElementAtPosition(x, y, '.drop-zone-cell');
+                    if (dropCell) {
+                       moveToWorkArea(selectedElement, dropCell);
+                    } else {
+                        moveToWorkArea(selectedElement);
+                    }
+                    playSound('release');
+                } else {
+                    document.getElementById('columnA').appendChild(selectedElement);
+                    if (draggingGroup) {
+                        draggingGroup.forEach(el => {
+                            document.getElementById('columnA').appendChild(el);
+                            resetElementPosition(el);
+                            el.classList.remove('hand-selected');
+                        });
+                    }
+                    resetElementPosition(selectedElement);
+                    selectedElement.classList.add('in-col-A');
+                    playSound('release');
+                }
+                selectedElement.classList.remove('hand-selected');
+                selectedElement = null;
+                updateClearAllButtonIcon();
+            }
+            isDragging = false;
+            draggingHand = null;
+            draggingGroup = null;
+            document.getElementById('workArea').classList.remove('drag-over');
+            document.getElementById('placementGrid').classList.remove('show');
+            document.querySelectorAll('.drop-zone-cell').forEach(c => c.classList.remove('drag-over'));
+        }
+
+        function getElementAtPosition(x, y, selector = '.text-item, .file-item, .text-item-group, .drop-zone-cell') {
+            const elements = document.elementsFromPoint(x, y);
+            for (const element of elements) {
+                if (element.matches(selector)) {
+                    return element;
+                }
+            }
+            return null;
+        }
+
+        function updateIndicator(indicator, x, y, isGrabbing = false) {
+            indicator.style.display = 'block';
+            indicator.style.left = (x - indicator.offsetWidth / 2) + 'px';
+            indicator.style.top = (y - indicator.offsetHeight / 2) + 'px';
+            isGrabbing ? indicator.classList.add('closed') : indicator.classList.remove('closed');
+        }
+        
+        function resetElementPosition(element) {
+            element.style.position = 'relative';
+            element.style.left = '';
+            element.style.top = '';
+            element.style.zIndex = '5';
+        }
+        
+        function moveToWorkArea(element, targetCell = null) {
+            resetElementPosition(element);
+            const parent = element.parentElement;
+            if (parent && parent.classList.contains('drop-zone-cell')) {
+                parent.innerHTML = '';
+            }
+
+            if (targetCell) {
+                targetCell.innerHTML = '';
+                targetCell.appendChild(element);
+                updateStatus(`Spostato nella cella di lavoro: "${element.querySelector('.item-text-content').textContent || element.dataset.filename}"`);
+            } else {
+                const emptyCell = document.querySelector('.drop-zone-cell:empty');
+                if (emptyCell) {
+                    emptyCell.appendChild(element);
+                    updateStatus(`Spostato in area di lavoro: "${element.querySelector('.item-text-content').textContent || element.dataset.filename}"`);
+                } else {
+                    const firstCell = document.querySelector('.drop-zone-cell');
+                    if (firstCell) {
+                        firstCell.innerHTML = '';
+                        firstCell.appendChild(element);
+                        updateStatus(`Sostituito in area di lavoro: "${element.querySelector('.item-text-content').textContent || element.dataset.filename}"`);
+                    }
+                }
+            }
+            element.classList.remove('in-col-A');
+            element.classList.add('in-col-B');
+            updateClearAllButtonIcon();
+        }
+        
+        function deleteItem(e) {
+            const item = e.target.closest('.text-item, .file-item');
+            if (item && item.classList.contains('in-col-A')) {
+                item.remove();
+            }
+            updateClearAllButtonIcon();
+        }
+
+        // --- Mouse Drag and Drop ---
+        function setupMouseDragAndDrop() {
+            mouseIndicator.style.display = 'block';
+            document.addEventListener('mousemove', (e) => {
+                mouseIndicator.style.left = e.clientX - mouseIndicator.offsetWidth / 2 + 'px';
+                mouseIndicator.style.top = e.clientY - mouseIndicator.offsetHeight / 2 + 'px';
+
+                if (mouseDragging && selectedElement) {
+                    const dx = e.clientX - mouseDragOffset.x;
+                    const dy = e.clientY - mouseDragOffset.y;
+                    selectedElement.style.left = dx + 'px';
+                    selectedElement.style.top = dy + 'px';
+                    
+                    if (draggingGroup) {
+                        const parentRect = selectedElement.getBoundingClientRect();
+                        draggingGroup.forEach(el => {
+                            resetElementPosition(el);
+                            el.style.left = (parentRect.left + (originalRect.left - parentRect.left)) + 'px';
+                            el.style.top = (parentRect.top + (originalRect.top - parentRect.top)) + 'px';
+                        });
+                    }
+
+                    const workArea = document.getElementById('workArea');
+                    const placementGrid = document.getElementById('placementGrid');
+                    const rect = workArea.getBoundingClientRect();
+
+                    if (e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom) {
+                        workArea.classList.add('drag-over');
+                        placementGrid.classList.add('show');
+                        const cell = getElementAtPosition(e.clientX, e.clientY, '.drop-zone-cell');
+                        const cells = document.querySelectorAll('.drop-zone-cell');
+                        cells.forEach(c => c.classList.remove('drag-over'));
+                        if (cell) {
+                            cell.classList.add('drag-over');
+                        }
+                    } else {
+                        workArea.classList.remove('drag-over');
+                        placementGrid.classList.remove('show');
+                        document.querySelectorAll('.drop-zone-cell').forEach(c => c.classList.remove('drag-over'));
+                    }
+                }
+            });
+            document.addEventListener('mousedown', (e) => {
+                const item = e.target.closest('.text-item, .file-item, .text-item-group');
+                if (item && !isDragging) {
+                    if (e.target.classList.contains('delete-btn')) {
+                        deleteItem(e);
+                        return;
+                    }
+                    if (e.target.classList.contains('listen-btn')) {
+                        return;
+                    }
+                    
+                    mouseDragging = true;
+                    selectedElement = item;
+                    selectedElement.classList.add('hand-selected');
+                    selectedElement.style.position = 'fixed';
+                    mouseDragOffset = {
+                        x: e.clientX - item.getBoundingClientRect().left,
+                        y: e.clientY - item.getBoundingClientRect().top
+                    };
+                    updateStatus(`Elemento selezionato con il mouse: "${item.querySelector('.item-text-content').textContent || item.dataset.filename}"`);
+                    
+                    if (item.classList.contains('text-item-group')) {
+                        draggingGroup = document.querySelectorAll(`[data-group-id="${item.dataset.groupId}"]`);
+                        draggingGroup.forEach(el => {
+                            if (el !== item) {
+                                el.classList.add('hand-selected');
+                                el.style.position = 'fixed';
+                            }
+                        });
+                    }
+                    playSound('select');
+                }
+            });
+
+            document.addEventListener('mouseup', (e) => {
+                if (mouseDragging && selectedElement) {
+                    const workArea = document.getElementById('workArea');
+                    const rect = workArea.getBoundingClientRect();
+                    if (e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom) {
+                        const dropCell = getElementAtPosition(e.clientX, e.clientY, '.drop-zone-cell');
+                        if (dropCell) {
+                           moveToWorkArea(selectedElement, dropCell);
+                        } else {
+                            moveToWorkArea(selectedElement);
+                        }
+                    } else {
+                        document.getElementById('columnA').appendChild(selectedElement);
+                        if (draggingGroup) {
+                            draggingGroup.forEach(el => {
+                                document.getElementById('columnA').appendChild(el);
+                                resetElementPosition(el);
+                                el.classList.remove('hand-selected');
+                            });
+                        }
+                        resetElementPosition(selectedElement);
+                        selectedElement.classList.add('in-col-A');
+                    }
+                    selectedElement.classList.remove('hand-selected');
+                    selectedElement = null;
+                    playSound('release');
+                    updateClearAllButtonIcon();
+                }
+                mouseDragging = false;
+                draggingGroup = null;
+                document.getElementById('workArea').classList.remove('drag-over');
+                document.getElementById('placementGrid').classList.remove('show');
+                document.querySelectorAll('.drop-zone-cell').forEach(c => c.classList.remove('drag-over'));
+            });
+        }
+        
+        // --- Inizializzazione ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+            hands.onResults(onHandResults);
+
+            const faceMesh = new FaceMesh({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            });
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            faceMesh.onResults(onFaceResults);
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                    await faceMesh.send({ image: videoElement });
+                },
+                width: 640,
+                height: 360
+            });
+            camera.start();
+
+            updateStatus('Webcam attiva. Mostra le mani o usa il mouse.');
+            window.addEventListener('resize', () => {
+                handCanvas.width = window.innerWidth;
+                handCanvas.height = window.innerHeight;
+                faceCanvas.width = window.innerWidth;
+                faceCanvas.height = window.innerHeight;
+            });
+            handCanvas.width = window.innerWidth;
+            handCanvas.height = window.innerHeight;
+            faceCanvas.width = window.innerWidth;
+            faceCanvas.height = window.innerHeight;
+            
+            initializeVoiceRecognition();
+            setupMouseDragAndDrop();
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.getElementById('configModal').style.display === 'flex') {
+                    closeConfigMenu();
+                }
+                if (e.key === 'Enter') {
+                    addTextItem();
+                }
+                // Gestione ingrandimento/rimpicciolimento
+                if (e.ctrlKey && (e.key === '+' || e.key === '=')) {
+                    e.preventDefault();
+                    adjustFontSize(1);
+                }
+                if (e.ctrlKey && e.key === '-') {
+                    e.preventDefault();
+                    adjustFontSize(-1);
+                }
+            });
+            textInput.focus();
+
+            // Imposta i colori di default
+            updateHandColors();
+            updateButtonColors();
+            updateButtonPosition();
+            updateClearAllButtonIcon(); // Inizializza l'icona del cestino
+
+            // Setup per i toggle AI
+            document.getElementById('ollamaToggle').addEventListener('click', () => toggleAI('ollama'));
+            document.getElementById('geminiToggle').addEventListener('click', () => toggleAI('gemini'));
+            document.getElementById('claudeToggle').addEventListener('click', () => toggleAI('claude'));
+            
+            document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+            
+            // Inizializza i pulsanti
+            document.getElementById('addTextBtn').addEventListener('click', addTextItem);
+            document.getElementById('sendToAI').addEventListener('click', sendToAI);
+            document.getElementById('voiceBtn').addEventListener('click', toggleVoiceRecording);
+            document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+        });
+
+        // Funzione per ridimensionare il font e le icone
+        function adjustFontSize(direction) {
+            let currentSize = parseFloat(window.getComputedStyle(document.body).getPropertyValue('font-size'));
+            let currentIconSize = parseFloat(window.getComputedStyle(document.querySelector('.btn-icon')).getPropertyValue('font-size'));
+            
+            let newSize = currentSize + direction;
+            let newIconSize = currentIconSize + (direction * 5); // Aumenta di 5x
+            
+            if (newSize > 10 && newSize < 40) {
+                document.documentElement.style.setProperty('--base-font-size', `${newSize}px`);
+                document.documentElement.style.setProperty('--btn-icon-font-size', `${newIconSize}px`);
+                textInput.style.fontSize = `${newSize * 1.5}px`;
+            }
+        }
+        
+        // --- Menu di configurazione ---
+        function openConfigMenu() {
+            document.getElementById('configModal').style.display = 'flex';
+            document.getElementById('currentOllamaModel').value = document.getElementById('ollamaModelName').value;
+            textInput.blur();
+        }
+
+        function closeConfigMenu() {
+            document.getElementById('configModal').style.display = 'none';
+            textInput.focus();
+        }
+        
+        function applyConfigChanges() {
+            updateHandColors();
+            updateButtonColors();
+            updateItemSizes();
+            updateItemDisplayMode();
+            updateIconPosition();
+            updateButtonPosition();
+            updateStatus('Configurazione applicata.');
+            closeConfigMenu();
+        }
+
+        document.querySelectorAll('.modal-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.tab).classList.add('active');
+            });
+        });
+
+        function copyError(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector(`#${elementId} .copy-error-btn`);
+                btn.textContent = 'Copiato!';
+                setTimeout(() => btn.textContent = '📋 Copia errore', 2000);
+            }).catch(err => {
+                updateStatus('Errore nella copia: ' + err);
+            });
+        }
+        
+        async function testOllamaConnection() {
+            const statusDiv = document.getElementById('ollama-status');
+            const modelsDiv = document.getElementById('ollama-models');
+            statusDiv.textContent = 'Stato: Connessione in corso...';
+            modelsDiv.textContent = 'Modelli disponibili: Caricamento...';
+            updateAIStatus('ollama', 'loading');
+
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                if (!response.ok) {
+                    throw new Error('Impossibile connettersi a Ollama. Assicurati che sia in esecuzione con `ollama serve --cors`.');
+                }
+                const data = await response.json();
+                statusDiv.textContent = 'Stato: Connesso';
+                if (data.models && data.models.length > 0) {
+                    const modelList = data.models.map(m => `- ${m.name}`).join('\n');
+                    modelsDiv.textContent = 'Modelli disponibili:\n' + modelList;
+                    updateAIStatus('ollama', 'success-test');
+                } else {
+                    modelsDiv.textContent = 'Modelli disponibili: Nessuno trovato.';
+                    updateAIStatus('ollama', 'fail');
+                }
+            } catch (error) {
+                lastErrorText = `Stato: Errore - ${error.message}`;
+                statusDiv.textContent = lastErrorText;
+                modelsDiv.textContent = 'Modelli disponibili: Errore durante il caricamento.';
+                updateAIStatus('ollama', 'fail');
+                console.error(error);
+                if (document.getElementById('soundEnabled').checked) document.getElementById('errorSound').play();
+            }
+        }
+        
+        function requestOllamaPermission() {
+            document.getElementById('ollamaPermissionModal').style.display = 'flex';
+        }
+
+        function acceptOllamaPermission() {
+            document.getElementById('ollamaPermissionModal').style.display = 'none';
+            // Qui si potrebbe salvare un flag nel localStorage per non chiedere più
+            toggleAI('ollama');
+        }
+
+        function declineOllamaPermission() {
+            document.getElementById('ollamaPermissionModal').style.display = 'none';
+            // Potrebbe mostrare un messaggio di "ok, Ollama non sarà usato"
+            updateStatus('Connessione a Ollama rifiutata.');
+        }
+
+        function saveConfigToFile() {
+            const config = {
+                activeAI: activeAI,
+                ollamaModel: activeAI === 'ollama' ? document.getElementById('ollamaModelName').value : null,
+                contentItemSize: document.getElementById('contentItemSize').value,
+                itemDisplayMode: document.getElementById('itemDisplayMode').value,
+                iconPosition: document.getElementById('iconPosition').value,
+                buttonsPosition: document.getElementById('buttonsPosition').value,
+                theme: document.body.classList.contains('school-theme') ? 'school' : 'dark',
+                handLeftColor: document.getElementById('handLeftColor').value,
+                handRightColor: document.getElementById('handRightColor').value,
+                faceColor: document.getElementById('faceColor').value,
+                addTextBtnColor: document.getElementById('addTextBtnColor').value,
+                sendToAIColor: document.getElementById('sendToAIColor').value,
+                voiceBtnColor: document.getElementById('voiceBtnColor').value,
+                fileLabelColor: document.getElementById('fileLabelColor').value,
+                clearAllBtnColor: document.getElementById('clearAllBtnColor').value,
+                aiTriggerWord: document.getElementById('aiTriggerWord').value,
+                voiceLanguage: document.getElementById('voiceLanguageOption').value,
+                faceRecognitionEnabled: document.getElementById('faceRecognitionEnabled').checked,
+                soundEnabled: document.getElementById('soundEnabled').checked,
+                gestureTimeout: document.getElementById('gestureTimeout').value,
+                accessDate: new Date().toISOString()
+            };
+            const fileContent = JSON.stringify(config, null, 2);
+            const blob = new Blob([fileContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai_config_${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            updateStatus('Configurazione salvata con successo!');
+        }
+        
+        function saveWorkspace() {
+            const projectName = document.querySelector('.project-name-input').value || 'progetto_senza_nome';
+            const columnAItems = Array.from(document.getElementById('columnA').children).filter(el => el.classList.contains('text-item') || el.classList.contains('file-item')).map(item => ({
+                content: item.classList.contains('text-item') ? item.querySelector('.item-text-content').textContent : item.dataset.filename,
+                type: item.classList.contains('text-item') ? 'text' : 'file',
+                position: 'columnA'
+            }));
+            const columnBItems = Array.from(document.getElementById('workArea').querySelectorAll('.text-item, .file-item')).map(item => ({
+                content: item.classList.contains('text-item') ? item.querySelector('.item-text-content').textContent : item.dataset.filename,
+                type: item.classList.contains('text-item') ? 'text' : 'file',
+                position: 'columnB'
+            }));
+
+            const workspaceData = {
+                projectName: projectName,
+                timestamp: new Date().toISOString(),
+                items: [...columnAItems, ...columnBItems]
+            };
+
+            const fileContent = JSON.stringify(workspaceData, null, 2);
+            const blob = new Blob([fileContent], { type: 'text/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${projectName}_workspace_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            updateStatus('Area di lavoro salvata con successo!');
+        }
+
+        function setTheme(theme) {
+            document.body.classList.remove('dark-theme', 'school-theme');
+            document.body.classList.add(theme);
+        }
+
+        function updateHandColors() {
+            document.documentElement.style.setProperty('--hand-left-color', document.getElementById('handLeftColor').value);
+            document.documentElement.style.setProperty('--hand-right-color', document.getElementById('handRightColor').value);
+            document.documentElement.style.setProperty('--face-color', document.getElementById('faceColor').value);
+        }
+
+        function updateButtonColors() {
+            document.documentElement.style.setProperty('--add-text-btn-bg', document.getElementById('addTextBtnColor').value);
+            document.documentElement.style.setProperty('--send-to-ai-btn-bg', document.getElementById('sendToAIColor').value);
+            document.documentElement.style.setProperty('--voice-btn-bg', document.getElementById('voiceBtnColor').value);
+            document.documentElement.style.setProperty('--file-label-bg', document.getElementById('fileLabelColor').value);
+            document.documentElement.style.setProperty('--clear-all-btn-bg', document.getElementById('clearAllBtnColor').value);
+        }
+        
+        function updateButtonPosition() {
+            const position = document.getElementById('buttonsPosition').value;
+            const panel = document.querySelector('.input-panel');
+            const buttonsContainer = document.getElementById('inputButtonsContainer');
+            panel.classList.remove('buttons-top', 'buttons-bottom', 'buttons-right', 'buttons-left');
+            
+            if (position === 'bottom') {
+                panel.style.flexDirection = 'column';
+            } else if (position === 'top') {
+                panel.style.flexDirection = 'column';
+                buttonsContainer.style.order = '-1';
+            } else if (position === 'right') {
+                panel.style.flexDirection = 'row';
+                panel.style.alignItems = 'center';
+                buttonsContainer.style.flexDirection = 'column';
+            } else if (position === 'left') {
+                panel.style.flexDirection = 'row';
+                panel.style.alignItems = 'center';
+                buttonsContainer.style.flexDirection = 'column';
+                buttonsContainer.style.order = '-1';
+            } else {
+                panel.style.flexDirection = 'column';
+            }
+        }
+        
+        function updateItemSizes(item) {
+            const size = document.getElementById('contentItemSize').value;
+            const items = item ? [item] : document.querySelectorAll('.text-item, .file-item');
+            items.forEach(item => {
+                if (size === 'full') {
+                    item.classList.add('full-width');
+                } else {
+                    item.classList.remove('full-width');
+                }
+            });
+        }
+
+        function updateItemDisplayMode(item) {
+            const mode = document.getElementById('itemDisplayMode').value;
+            const items = item ? [item] : document.querySelectorAll('.text-item, .file-item');
+            items.forEach(item => {
+                item.classList.remove('item-text-only', 'item-icon-only');
+                if (mode === 'text-only') {
+                    item.classList.add('item-text-only');
+                } else if (mode === 'icon-only') {
+                    item.classList.add('item-icon-only');
+                }
+            });
+
+            // Gestione dei pulsanti del pannello di input
+            const inputPanel = document.querySelector('.input-panel');
+            if (mode === 'icon-only') {
+                inputPanel.classList.add('icon-only-mode');
+            } else {
+                inputPanel.classList.remove('icon-only-mode');
+            }
+        }
+        
+        function updateIconPosition(item) {
+            const position = document.getElementById('iconPosition').value;
+            const items = item ? [item] : document.querySelectorAll('.text-item, .file-item');
+            items.forEach(item => {
+                item.classList.remove('item-icon-top', 'item-icon-right', 'item-icon-bottom', 'item-icon-left');
+                item.classList.add(`item-icon-${position}`);
+            });
+        }
+        
+        function updateClearAllButtonIcon() {
+            const clearBtn = document.getElementById('clearAllBtn');
+            const iconSpan = clearBtn.querySelector('.btn-icon');
+            const columnAItems = document.getElementById('columnA').querySelectorAll('.text-item, .file-item');
+            const workAreaItems = document.getElementById('workArea').querySelectorAll('.text-item, .file-item');
+
+            if (columnAItems.length === 0 && workAreaItems.length === 0) {
+                iconSpan.textContent = '🗑️'; // Cestino vuoto
+            } else {
+                iconSpan.textContent = '🧺'; // Cestino pieno
+            }
+        }
+
+        // --- AI Panel Functions ---
+        function updateAIStatus(ai, status) {
+            const iconElement = document.getElementById(`${ai}Status`);
+            if (!iconElement) return;
+            iconElement.innerHTML = '';
+            iconElement.className = 'ai-status-icon status-icon';
+            if (status === 'loading') { iconElement.innerHTML = '🔄'; }
+            else if (status === 'success-test') { iconElement.innerHTML = '✔️'; iconElement.classList.add('green'); }
+            else if (status === 'success-response') { iconElement.innerHTML = '✅'; iconElement.classList.add('green'); }
+            else if (status === 'fail') { iconElement.innerHTML = '❌'; iconElement.classList.add('red'); }
+            else if (status === 'test-ok') { iconElement.innerHTML = '✅'; iconElement.classList.add('blue'); }
+        }
+        
+        function toggleAI(aiType) {
+            const ollamaBtn = document.getElementById('ollamaToggle');
+            const geminiBtn = document.getElementById('geminiToggle');
+            const claudeBtn = document.getElementById('claudeToggle');
+            const sendBtn = document.getElementById('sendToAI');
+            const ollamaSettings = document.getElementById('ollamaSettings');
+
+            ollamaBtn.classList.remove('active');
+            geminiBtn.classList.remove('active');
+            claudeBtn.classList.remove('active');
+            ollamaSettings.style.display = 'none';
+
+            if (activeAI === aiType) {
+                activeAI = null;
+                sendBtn.classList.add('ai-disabled');
+                updateStatus('AI disattivato');
+            } else {
+                activeAI = aiType;
+                sendBtn.classList.remove('ai-disabled');
+                if (aiType === 'ollama') {
+                    if (localStorage.getItem('ollamaPermission') !== 'true') {
+                        requestOllamaPermission();
+                        return;
+                    }
+                    ollamaBtn.classList.add('active');
+                    ollamaSettings.style.display = 'block';
+                    updateStatus('Ollama attivato');
+                    updateAIStatus('ollama', 'success-test');
+                } else if (aiType === 'gemini') {
+                    geminiBtn.classList.add('active');
+                    updateStatus('Gemini attivato');
+                    updateAIStatus('gemini', 'test-ok');
+                } else {
+                    claudeBtn.classList.add('active');
+                    updateStatus('Claude attivato');
+                    updateAIStatus('claude', 'test-ok');
+                }
+            }
+        }
+        
+        async function sendToAI() {
+            const input = document.getElementById('textInput').value.trim();
+            const aiTriggerWord = document.getElementById('aiTriggerWord').value;
+
+            if (input.startsWith(aiTriggerWord)) {
+                const textToSend = input.substring(aiTriggerWord.length).trim();
+                if (!textToSend) {
+                    updateStatus('Inserisci del testo dopo la parola d\'ordine.');
+                    return;
+                }
+                if (!activeAI) {
+                    updateStatus('Seleziona prima un AI (Ollama, Gemini o Claude)');
+                    return;
+                }
+                try {
+                    updateStatus(`Invio in corso a ${activeAI}...`);
+                    let response;
+                    updateAIStatus(activeAI, 'loading');
+                    if (activeAI === 'ollama') {
+                        const modelName = document.getElementById('ollamaModelName').value || 'gemma:2b';
+                        response = await sendToOllama(textToSend, modelName);
+                    } else if (activeAI === 'gemini') {
+                        response = 'Funzione Gemini non ancora implementata.';
+                    } else {
+                        response = await sendToClaude(textToSend);
+                    }
+                    document.getElementById('aiResponse').innerHTML = `<strong>${activeAI}:</strong> ${response}`;
+                    const item = createTextItem(`🤖 ${activeAI}: ${response}`);
+                    document.getElementById('columnA').appendChild(item);
+                    document.getElementById('textInput').value = '';
+                    updateStatus(`Risposta ricevuta da ${activeAI}`);
+                    updateAIStatus(activeAI, 'success-response');
+                    updateClearAllButtonIcon();
+                } catch (error) {
+                    console.error('Errore AI:', error);
+                    updateStatus(`Errore ${activeAI}: ${error.message}`);
+                    document.getElementById('aiResponse').innerHTML = `<strong>Errore:</strong> ${error.message}`;
+                    updateAIStatus(activeAI, 'fail');
+                    if (document.getElementById('soundEnabled').checked) document.getElementById('errorSound').play();
+                }
+            } else {
+                updateStatus('Inserisci prima la parola d\'ordine per inviare all\'AI.');
+            }
+        }
+        
+        async function sendToOllama(prompt, modelName) {
+            try {
+                const response = await fetch('http://localhost:11434/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: modelName,
+                        prompt: `Aiuta una persona dislessica con questo testo: ${prompt}`,
+                        stream: false
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error('Ollama non disponibile o modello non trovato. Controlla che sia in esecuzione su localhost:11434 con il flag --cors.');
+                }
+                const data = await response.json();
+                return data.response;
+            } catch (error) {
+                throw new Error('Impossibile connettersi a Ollama. Assicurati che sia installato e in esecuzione.');
+            }
+        }
+
+        async function sendToClaude(prompt) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    resolve(`Ecco un aiuto per il tuo testo "${prompt}": Ti suggerisco di suddividere il contenuto in parti più piccole per facilitare la lettura. Usa font più grandi e spazi maggiori tra le righe.`);
+                }, 1500);
+            });
+        }
+        
+        function initializeVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.onstart = function() { updateStatus('Ascolto in corso... Parla ora!'); };
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('textInput').value = transcript;
+                    updateStatus(`Riconosciuto: "${transcript}"`);
+                    setTimeout(() => { addTextItem(); }, 500);
+                };
+                recognition.onerror = function(event) {
+                    console.error('Errore riconoscimento vocale:', event.error);
+                    updateStatus(`Errore vocale: ${event.error}`);
+                    if (document.getElementById('soundEnabled').checked) document.getElementById('errorSound').play();
+                };
+                recognition.onend = function() {
+                    isVoiceRecording = false;
+                    updateVoiceButton();
+                };
+            } else {
+                updateStatus('Riconoscimento vocale non supportato in questo browser');
+                document.getElementById('voiceBtn').disabled = true;
+            }
+        }
+
+        function toggleVoiceRecording() {
+            if (!recognition) { updateStatus('Riconoscimento vocale non supportato'); return; }
+            if (!isVoiceRecording) {
+                const language = document.getElementById('voiceLanguageOption').value;
+                recognition.lang = language;
+                recognition.start();
+                isVoiceRecording = true;
+                updateVoiceButton();
+                updateStatus('Registrazione vocale avviata...');
+            } else {
+                recognition.stop();
+                isVoiceRecording = false;
+                updateVoiceButton();
+                updateStatus('Registrazione vocale fermata');
+            }
+        }
+
+        function updateVoiceButton() {
+            const btn = document.getElementById('voiceBtn');
+            const icon = btn.querySelector('.btn-icon');
+            const text = btn.querySelector('span:last-child');
+            if (isVoiceRecording) {
+                icon.textContent = '🔴';
+                btn.classList.add('recording');
+                text.textContent = 'Stop';
+            } else {
+                icon.textContent = '🎤';
+                btn.classList.remove('recording');
+                text.textContent = 'Registra Voce';
+            }
+        }
+
+        function addTextItem() {
+            const input = document.getElementById('textInput');
+            const text = input.value.trim();
+            if (text) {
+                const item = createTextItem(text);
+                document.getElementById('columnA').appendChild(item);
+                input.value = '';
+                updateStatus(`Aggiunto: "${text}"`);
+                textInput.focus();
+                item.classList.add('in-col-A');
+                updateClearAllButtonIcon();
+            }
+        }
+        
+        let groupIdCounter = 0;
+        function createTextItem(text) {
+            const item = document.createElement('div');
+            item.className = 'text-item';
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = 'x';
+            deleteBtn.onclick = deleteItem;
+            item.appendChild(deleteBtn);
+
+            const itemContent = document.createElement('span');
+            itemContent.className = 'item-text-content';
+            itemContent.textContent = text;
+            item.appendChild(itemContent);
+            
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'item-buttons-container';
+
+            const listenBtn = document.createElement('button');
+            listenBtn.className = 'listen-btn';
+            listenBtn.innerHTML = '🔊';
+            listenBtn.onclick = (e) => {
+                e.stopPropagation();
+                speakText(text);
+            };
+            buttonsContainer.appendChild(listenBtn);
+            item.appendChild(buttonsContainer);
+            
+            updateIconPosition(item);
+            updateItemSizes(item);
+            updateItemDisplayMode(item);
+            
+            return item;
+        }
+        
+        function handleFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            for (const file of files) {
+                const item = createFileItem(file);
+                document.getElementById('columnA').appendChild(item);
+                item.classList.add('in-col-A');
+            }
+            fileInput.value = '';
+            updateClearAllButtonIcon();
+        }
+
+        function createFileItem(file) {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.dataset.filename = file.name;
+            item.dataset.filesize = file.size;
+            item.dataset.filetype = file.type;
+            item.dataset.filemodified = file.lastModified;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = 'x';
+            deleteBtn.onclick = deleteItem;
+            item.appendChild(deleteBtn);
+
+            let icon = '📄';
+            if (file.type.startsWith('image/')) icon = '🖼️';
+            else if (file.type.startsWith('audio/')) icon = '🎵';
+            else if (file.type.startsWith('video/')) icon = '🎬';
+            else if (file.type.includes('pdf')) icon = '📋';
+            else if (file.type.includes('text')) icon = '📝';
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'file-icon';
+            iconSpan.textContent = icon;
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = file.name;
+            item.appendChild(iconSpan);
+            item.appendChild(nameSpan);
+            updateStatus(`File aggiunto: ${file.name}`);
+            
+            updateIconPosition(item);
+            updateItemSizes(item);
+            updateItemDisplayMode(item);
+            
+            return item;
+        }
+        
+        function showDetails(content) {
+            const details = document.getElementById('details');
+            details.innerHTML = `
+                <h3>📋 Dettagli Elemento</h3>
+                <p><strong>Contenuto:</strong> ${content}</p>
+                <p><strong>Lunghezza:</strong> ${content.length} caratteri</p>
+                <p><strong>Parole:</strong> ${content.split(/\s+/).filter(Boolean).length}</p>
+                <p><strong>Ora:</strong> ${new Date().toLocaleTimeString('it-IT')}</p>
+                <hr style="margin: 15px 0; border: none; height: 1px; background: rgba(127, 140, 141, 0.3);">
+                <h4>🔧 Azioni disponibili:</h4>
+                <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+                    <button onclick="speakText('${content.replace(/'/g, "\\'")}')" style="min-width: auto; padding: 8px 12px;">🔊 Leggi</button>
+                    <button onclick="copyText('${content.replace(/'/g, "\\'")}')" style="min-width: auto; padding: 8px 12px;">📋 Copia</button>
+                </div>
+            `;
+        }
+
+        function showFileDetails(file) {
+            const details = document.getElementById('details');
+            details.innerHTML = `
+                <h3>📁 Dettagli File</h3>
+                <p><strong>Nome:</strong> ${file.name}</p>
+                <p><strong>Tipo:</strong> ${file.type || 'Sconosciuto'}</p>
+                <p><strong>Dimensione:</strong> ${formatFileSize(file.size)}</p>
+                <p><strong>Ultima modifica:</strong> ${new Date(file.lastModified).toLocaleString('it-IT')}</p>
+                <hr style="margin: 15px 0; border: none; height: 1px; background: rgba(127, 140, 141, 0.3);">
+                <h4>🔧 Azioni disponibili:</h4>
+                <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+                    <button onclick="readFileContent('${file.name}')" style="min-width: auto; padding: 8px 12px;">📖 Leggi Contenuto</button>
+                    <button onclick="copyText('${file.name}')" style="min-width: auto; padding: 8px 12px;">📋 Copia Nome</button>
+                </div>
+            `;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes == 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'it-IT';
+                utterance.rate = 0.8;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                speechSynthesis.speak(utterance);
+                updateStatus('Lettura del testo in corso...');
+            } else {
+                updateStatus('Sintesi vocale non supportata in questo browser');
+            }
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                updateStatus('Testo copiato negli appunti!');
+            }).catch(err => {
+                updateStatus('Errore nella copia: ' + err);
+                console.error('Errore copia:', err);
+            });
+        }
+
+        function readFileContent(filename) {
+            updateStatus(`Funzione di lettura file "${filename}" non ancora implementata.`);
+        }
+        
+        function connectArduino() {
+            // Placeholder for WebUSB API
+            // This function would require user interaction to select a device
+            // and is highly browser-dependent and requires specific permissions.
+            // It cannot be implemented directly in this context for security reasons.
+            updateStatus('Tentativo di connessione ad Arduino... Richiesta permesso USB in corso.');
+            if (navigator.usb) {
+                // Esempio fittizio di connessione
+                setTimeout(() => {
+                    updateStatus('Funzione di connessione ad Arduino non ancora implementata per motivi di sicurezza del browser. Il browser blocca l\'accesso diretto a dispositivi USB senza permesso esplicito dell\'utente.');
+                }, 1000);
+            } else {
+                updateStatus('WebUSB API non supportata in questo browser.');
+            }
+        }
+
+        function clearAll() {
+            const columnA = document.getElementById('columnA');
+            const workArea = document.getElementById('workArea');
+            const workAreaPlaceholder = '<p>Trascina gli elementi qui</p><div class="placement-grid" id="placementGrid"><div class="drop-zone-cell" data-cell-index="0"></div><div class="drop-zone-cell" data-cell-index="1"></div><div class="drop-zone-cell" data-cell-index="2"></div></div>';
+
+            // Rimuovi tutti gli elementi dalle colonne A e B
+            Array.from(columnA.children).forEach(child => {
+                if (child.classList.contains('text-item') || child.classList.contains('file-item')) {
+                    child.remove();
+                }
+            });
+            workArea.innerHTML = workAreaPlaceholder;
+            
+            document.getElementById('details').innerHTML = 'Seleziona un elemento per vedere i dettagli';
+            document.getElementById('aiResponse').innerHTML = '';
+            updateStatus('Tutto pulito!');
+            updateClearAllButtonIcon();
+        }
+
+        function updateStatus(message) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.textContent = message;
+        }
+    </script>
+</body>
+</html>
