@@ -1,0 +1,1 @@
+It's a simple gui for insert your voice and ask in your local AI with your voice but desktop!
